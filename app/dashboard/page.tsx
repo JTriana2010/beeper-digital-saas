@@ -35,9 +35,9 @@ export default function DashboardPage() {
   const [branding, setBranding] = useState({
     logoUrl: '',
     bgColor: '#f9fafb',
-    cardColor: '#ffffff',
-    primaryColor: '#111827',
-    secondaryColor: '#4b5563',
+    cardColor: '#0f172a',
+    primaryColor: '#020617',
+    secondaryColor: '#4f46e5',
   });
 
   const [orders, setOrders] = useState<Order[]>([]);
