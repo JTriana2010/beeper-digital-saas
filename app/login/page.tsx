@@ -1,57 +1,85 @@
-import Link from 'next/link';
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center p-6 relative">
-      {/* Botón para regresar a la landing */}
-      <Link
-        href="/"
-        className="absolute top-6 left-6 text-sm text-slate-400 hover:text-white transition flex items-center gap-2"
-      >
-        ← Volver al inicio
-      </Link>
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
 
-      {/* Tarjeta de Login */}
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-2xl">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-indigo-400 tracking-tight">
-            BeeperKery
-          </h1>
-          <p className="text-sm text-slate-400 mt-2">
-            Acceso para Personal de Restaurante
-          </p>
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError('Credenciales inválidas. Revisa el correo o la contraseña.');
+      setLoading(false);
+    } else {
+      router.push('/dashboard');
+      router.refresh();
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-md border border-gray-100">
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-bold text-gray-900">Pager SaaS</h1>
+          <p className="text-sm text-gray-500">Acceso para Personal de Restaurante</p>
         </div>
 
-        <form className="space-y-5">
+        {error && (
+          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 border border-red-200">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Correo Electrónico
             </label>
             <input
               type="email"
-              placeholder="cajero@restaurante.com"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="cajero@restaurante.com"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Contraseña
             </label>
             <input
               type="password"
-              placeholder="••••••••"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="••••••••"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3.5 rounded-xl transition shadow-lg shadow-indigo-600/25 mt-2"
+            disabled={loading}
+            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus:outline-none disabled:opacity-50 transition-colors"
           >
-            Iniciar Sesión
+            {loading ? 'Ingresando...' : 'Iniciar Sesión'}
           </button>
         </form>
       </div>
