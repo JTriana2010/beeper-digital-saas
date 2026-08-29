@@ -5,7 +5,7 @@ export default function Home() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between p-6">
       {/* Barra superior */}
       <header className="flex justify-between items-center max-w-5xl w-full mx-auto py-4 border-b border-slate-800">
-        <h1 className="text-2xl font-bold text-indigo-400">Beeper Digital</h1>
+        <h1 className="text-2xl font-bold text-indigo-400">BeeperKery</h1>
         <Link
           href="/login"
           className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2 rounded-lg font-medium transition"
@@ -54,7 +54,7 @@ export default function Home() {
 
       {/* Pie de página */}
       <footer className="text-center text-slate-500 text-sm py-4 border-t border-slate-900">
-        © {new Date().getFullYear()} Beeper Digital — Sistema Inteligente de Notificación a Clientes.
+        © {new Date().getFullYear()} BeeperKery — Sistema Inteligente de Notificación a Clientes.
       </footer>
     </div>
   );
