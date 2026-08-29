@@ -92,8 +92,8 @@ export default function DashboardPage() {
           if (branchData.name) setBranchName(branchData.name);
           setBranding({
             logoUrl: branchData.logo_url || '',
-            bgColor: branchData.dash_bg_color || '#f9fafb',
-            cardColor: branchData.dash_card_color || '#ffffff',
+            bgColor: branchData.dash_bg_color || '#020618',
+            cardColor: branchData.dash_card_color || '#3949AB',
             primaryColor: branchData.dash_primary_color || '#111827',
             secondaryColor: branchData.dash_secondary_color || '#4b5563',
           });
