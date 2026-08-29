@@ -35,9 +35,9 @@ export default function DashboardPage() {
   const [branding, setBranding] = useState({
     logoUrl: '',
     bgColor: '#f9fafb',
-    cardColor: '#0f172a',
-    primaryColor: '#020617',
-    secondaryColor: '#4f46e5',
+    cardColor: '#ffffff',
+    primaryColor: '#111827',
+    secondaryColor: '#4b5563',
   });
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -273,7 +273,7 @@ export default function DashboardPage() {
 
   if (fetching) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-black">
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
         <p className="text-sm font-semibold">Cargando panel...</p>
       </div>
     );
@@ -291,7 +291,7 @@ export default function DashboardPage() {
             <img
               src={branding.logoUrl}
               alt="Logo"
-              className="h-14 w-14 object-contain rounded-xl border border-gray-200 bg-white p-1 shadow-sm"
+              className="h-14 w-14 object-contain rounded-xl border border-gray-200 bg-slate-900 border border-slate-800 p-1 shadow-sm"
             />
           )}
           <div>
@@ -310,7 +310,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/dashboard/settings"
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-black hover:bg-gray-100 transition-colors shadow-sm"
+            className="rounded-lg border border-gray-300 bg-slate-900 border border-slate-800 px-3 py-2 text-xs font-bold text-black hover:bg-gray-100 transition-colors shadow-sm"
           >
             ⚙️ Ajustes y Logo
           </Link>
@@ -344,7 +344,7 @@ export default function DashboardPage() {
                   onChange={(e) => setOrderNumber(e.target.value)}
                   placeholder="Ej. #104 o Beeper 12"
                   required
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black font-bold placeholder:text-gray-400 focus:border-blue-600 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-300 bg-slate-900 border border-slate-800 px-3 py-2 text-sm text-black font-bold placeholder:text-gray-400 focus:border-blue-600 focus:outline-none"
                 />
               </div>
 
@@ -360,7 +360,7 @@ export default function DashboardPage() {
                     value={totalAmount}
                     onChange={(e) => setTotalAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black font-bold placeholder:text-gray-400 focus:border-blue-600 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 bg-slate-900 border border-slate-800 px-3 py-2 text-sm text-black font-bold placeholder:text-gray-400 focus:border-blue-600 focus:outline-none"
                   />
                 </div>
 
@@ -371,7 +371,7 @@ export default function DashboardPage() {
                   <select
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-black font-extrabold focus:border-blue-600 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 bg-slate-900 border border-slate-800 px-2 py-2 text-sm text-black font-extrabold focus:border-blue-600 focus:outline-none"
                   >
                     <option value="COP">COP</option>
                     <option value="USD">USD</option>
@@ -383,7 +383,7 @@ export default function DashboardPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors mt-2 shadow-sm"
+                className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 py-2.5 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors mt-2 shadow-sm"
               >
                 {loading ? 'Generando...' : 'Crear Beeper Digital'}
               </button>
@@ -441,13 +441,13 @@ export default function DashboardPage() {
                             {c.total_orders} pedidos completados
                           </p>
                         </div>
-                        <span className="text-gray-500 font-bold text-sm">
+                        <span className="text-slate-400 font-bold text-sm">
                           {isExpanded ? '▲' : '▼'}
                         </span>
                       </button>
 
                       {isExpanded && (
-                        <div className="p-3 bg-white border-t border-gray-200 space-y-2">
+                        <div className="p-3 bg-slate-900 border border-slate-800 border-t border-gray-200 space-y-2">
                           <p className="font-bold text-black text-[11px] uppercase tracking-wider">
                             Ganancias Recaudadas:
                           </p>
@@ -500,13 +500,13 @@ export default function DashboardPage() {
                 {activeOrders.map((o) => (
                   <div
                     key={o.id}
-                    className="flex items-center justify-between p-4 rounded-lg border border-gray-200 bg-gray-50/70 hover:bg-white transition-all"
+                    className="flex items-center justify-between p-4 rounded-lg border border-gray-200 bg-gray-50/70 hover:bg-slate-900 border border-slate-800 transition-all"
                   >
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-lg font-black text-black">Pedido #{o.order_number}</span>
                         {o.total_amount !== undefined && o.total_amount !== null ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold text-gray-900 bg-gray-200 px-2 py-0.5 rounded">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-white bg-gray-200 px-2 py-0.5 rounded">
                             {formatMoney(o.total_amount, o.currency || 'COP')}
                             <span className="text-[10px] text-gray-700 font-black uppercase">
                               {o.currency || 'COP'}
@@ -531,7 +531,7 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setActiveQrToken(o.public_token)}
-                        className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-black hover:bg-gray-100 shadow-sm"
+                        className="rounded-md border border-gray-300 bg-slate-900 border border-slate-800 px-3 py-1.5 text-xs font-bold text-black hover:bg-gray-100 shadow-sm"
                       >
                         Mostrar QR
                       </button>
@@ -631,7 +631,7 @@ export default function DashboardPage() {
 
       {activeQrToken && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/60 p-4 z-50">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
+          <div className="w-full max-w-sm rounded-2xl bg-slate-900 border border-slate-800 p-6 text-center shadow-2xl">
             <h3 className="text-lg font-black text-black mb-2">Escanea tu Beeper Digital</h3>
             <p className="text-xs text-gray-600 mb-6">Muestra este código al cliente para abrir su turno</p>
             
