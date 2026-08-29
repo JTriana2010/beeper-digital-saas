@@ -92,8 +92,8 @@ export default function DashboardPage() {
           if (branchData.name) setBranchName(branchData.name);
           setBranding({
             logoUrl: branchData.logo_url || '',
-            bgColor: branchData.dash_bg_color || '#020618',
-            cardColor: branchData.dash_card_color || '#3949AB',
+            bgColor: branchData.dash_bg_color || '#f9fafb',
+            cardColor: branchData.dash_card_color || '#ffffff',
             primaryColor: branchData.dash_primary_color || '#111827',
             secondaryColor: branchData.dash_secondary_color || '#4b5563',
           });
@@ -273,7 +273,7 @@ export default function DashboardPage() {
 
   if (fetching) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-black">
         <p className="text-sm font-semibold">Cargando panel...</p>
       </div>
     );
@@ -383,7 +383,7 @@ export default function DashboardPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-lg bg-indigo-600 hover:bg-indigo-500 py-2.5 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors mt-2 shadow-sm"
+                className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-50 transition-colors mt-2 shadow-sm"
               >
                 {loading ? 'Generando...' : 'Crear Beeper Digital'}
               </button>
