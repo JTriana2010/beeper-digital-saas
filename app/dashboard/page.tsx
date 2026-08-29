@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
@@ -27,6 +27,9 @@ interface DailyClosure {
 }
 
 export default function DashboardPage() {
+  const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
+
   const [companyName, setCompanyName] = useState<string>('Mi Restaurante');
   const [branchName, setBranchName] = useState<string>('Sede Principal');
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -52,9 +55,6 @@ export default function DashboardPage() {
   const [fetching, setFetching] = useState(true);
   const [activeQrToken, setActiveQrToken] = useState<string | null>(null);
   const [expandedClosureId, setExpandedClosureId] = useState<string | null>(null);
-
-  const supabase = createClient();
-  const router = useRouter();
 
   useEffect(() => {
     async function loadInitialData() {
@@ -99,14 +99,39 @@ export default function DashboardPage() {
           });
         }
 
-        fetchOrders(profileData.branch_id);
-        fetchClosures(profileData.branch_id);
+        await fetchOrders(profileData.branch_id);
+        await fetchClosures(profileData.branch_id);
       }
       setFetching(false);
     }
 
     loadInitialData();
-  }, []);
+  }, [supabase, router]);
+
+  // Realtime order synchronization
+  useEffect(() => {
+    if (!branchId) return;
+
+    const channel = supabase
+      .channel(`realtime_orders_${branchId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `branch_id=eq.${branchId}`,
+        },
+        () => {
+          fetchOrders(branchId);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [branchId, supabase]);
 
   const fetchOrders = async (bId: string) => {
     const { data } = await supabase
@@ -151,7 +176,9 @@ export default function DashboardPage() {
       .select()
       .single();
 
-    if (!error && data) {
+    if (error) {
+      alert(`Error al crear el pedido: ${error.message}`);
+    } else if (data) {
       setOrderNumber('');
       setTotalAmount('');
       fetchOrders(branchId);
@@ -166,7 +193,9 @@ export default function DashboardPage() {
       .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq('id', orderId);
 
-    if (!error && branchId) {
+    if (error) {
+      alert(`Error al actualizar estado: ${error.message}`);
+    } else if (branchId) {
       fetchOrders(branchId);
     }
   };
@@ -179,14 +208,23 @@ export default function DashboardPage() {
       return;
     }
 
+    if (activeOrders.length > 0) {
+      const proceed = window.confirm(
+        `Atención: Hay ${activeOrders.length} pedido(s) aún en preparación o listos para entregar.\n\n¿Deseas archivar la jornada de todos modos?`
+      );
+      if (!proceed) return;
+    }
+
     const confirmClose = window.confirm(
-      `¿Estás seguro de finalizar el día?\n\n- Pedidos completados: ${deliveredOrders.length}\n- Se archivará la jornada y la pantalla se reiniciará para el siguiente día.`
+      `¿Estás seguro de finalizar el día?\n\n- Pedidos completados: ${deliveredOrders.length}\n- Se archivará la jornada y la pantalla se reiniciará.`
     );
 
     if (!confirmClose) return;
 
     setClosingDay(true);
-    const todayDateStr = new Date().toISOString().split('T')[0];
+    
+    const now = new Date();
+    const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     const { data: closureData, error: closureError } = await supabase
       .from('daily_closures')
