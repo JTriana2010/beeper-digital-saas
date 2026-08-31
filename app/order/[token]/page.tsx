@@ -43,34 +43,44 @@ export default function ClientOrderPage() {
     async function fetchOrder() {
       if (!token) return;
 
-      const { data } = await supabase
-        .from('orders')
+      // 1) Traemos el pedido mediante la función segura (ya no hay
+      //    lectura pública directa sobre la tabla `orders`).
+      const { data: orderRows, error: orderError } = await supabase
+        .rpc('get_order_by_token', { p_token: token });
+
+      const orderRow = orderRows?.[0];
+
+      if (orderError || !orderRow) {
+        setLoading(false);
+        return;
+      }
+
+      // 2) La sede sí es de lectura pública, la traemos aparte junto
+      //    con el nombre de la empresa dueña de esa sede.
+      const { data: branchRow } = await supabase
+        .from('branches')
         .select(`
-          id,
-          order_number,
-          status,
-          total_amount,
-          currency,
-          branches (
-            name,
-            logo_url,
-            bg_color,
-            client_card_color,
-            primary_color,
-            secondary_color,
-            companies (
-              name
-            )
+          name,
+          logo_url,
+          bg_color,
+          client_card_color,
+          primary_color,
+          secondary_color,
+          companies (
+            name
           )
         `)
-        .eq('public_token', token)
+        .eq('id', orderRow.branch_id)
         .single();
 
-      if (data) {
-        setOrder(data as unknown as OrderData);
-        if (data.status === 'READY') {
-          playAudio();
-        }
+      const combined = {
+        ...orderRow,
+        branches: branchRow,
+      } as unknown as OrderData;
+
+      setOrder(combined);
+      if (orderRow.status === 'READY') {
+        playAudio();
       }
       setLoading(false);
     }
