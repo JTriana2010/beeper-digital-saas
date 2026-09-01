@@ -87,19 +87,14 @@ export default function ClientOrderPage() {
 
     fetchOrder();
 
-    // Suscripción en tiempo real
+    // Suscripción en tiempo real: canal privado, único para este pedido
     const channel = supabase
-      .channel(`order-${token}`)
+      .channel(`pedido-estado-${token}`)
       .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'orders',
-          filter: `public_token=eq.${token}`,
-        },
+        'broadcast',
+        { event: 'UPDATE' },
         async (payload) => {
-          const updatedOrder = payload.new as { status: OrderData['status'] };
+          const updatedOrder = payload.payload.record as { status: OrderData['status'] };
           setOrder((prev) => (prev ? { ...prev, status: updatedOrder.status } : null));
 
           if (updatedOrder.status === 'READY') {
