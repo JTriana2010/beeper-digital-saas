@@ -89,7 +89,7 @@ export default function ClientOrderPage() {
 
     // Suscripción en tiempo real: canal privado, único para este pedido
     const channel = supabase
-      .channel(`pedido-estado-${token}`)
+      .channel(`pedido-estado-${token}`, { config: { private: true } })
       .on(
         'broadcast',
         { event: 'UPDATE' },
