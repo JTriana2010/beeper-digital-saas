@@ -27,6 +27,12 @@ interface Product {
 
 export default function MenuPage() {
   const [branchId, setBranchId] = useState<string | null>(null);
+  const [branding, setBranding] = useState({
+    bgColor: '#f9fafb',
+    cardColor: '#ffffff',
+    primaryColor: '#111827',
+    secondaryColor: '#4b5563',
+  });
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +81,22 @@ export default function MenuPage() {
 
       if (profile?.branch_id) {
         setBranchId(profile.branch_id);
+
+        const { data: branchData } = await supabase
+          .from('branches')
+          .select('dash_bg_color, dash_card_color, dash_primary_color, dash_secondary_color')
+          .eq('id', profile.branch_id)
+          .single();
+
+        if (branchData) {
+          setBranding({
+            bgColor: branchData.dash_bg_color || '#f9fafb',
+            cardColor: branchData.dash_card_color || '#ffffff',
+            primaryColor: branchData.dash_primary_color || '#111827',
+            secondaryColor: branchData.dash_secondary_color || '#4b5563',
+          });
+        }
+
         await fetchCategories(profile.branch_id);
         await fetchProducts(profile.branch_id);
       }
@@ -267,19 +289,19 @@ export default function MenuPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 md:p-10 text-black">
+    <div className="min-h-screen p-6 md:p-10 text-black" style={{ backgroundColor: branding.bgColor }}>
       <div className="mx-auto max-w-4xl space-y-6">
         <div>
           <Link href="/dashboard" className="text-xs font-bold text-blue-600 hover:underline mb-1 inline-block">
             ← Volver al Panel
           </Link>
-          <h1 className="text-2xl font-black text-black">🍽️ Carta / Menú</h1>
-          <p className="text-xs text-gray-600">Administra categorías y productos de tu sede</p>
+          <h1 className="text-2xl font-black" style={{ color: branding.primaryColor }}>🍽️ Carta / Menú</h1>
+          <p className="text-xs" style={{ color: branding.secondaryColor }}>Administra categorías y productos de tu sede</p>
         </div>
 
         {/* Nueva categoría */}
-        <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-200">
-          <h2 className="text-base font-bold mb-3">Nueva Categoría</h2>
+        <div className="rounded-xl p-6 shadow-sm border border-gray-200" style={{ backgroundColor: branding.cardColor }}>
+          <h2 className="text-base font-bold mb-3" style={{ color: branding.primaryColor }}>Nueva Categoría</h2>
           <form onSubmit={handleCreateCategory} className="flex gap-2">
             <input
               type="text"
@@ -308,7 +330,7 @@ export default function MenuPage() {
           categories.map((cat) => {
             const catProducts = products.filter((p) => p.category_id === cat.id);
             return (
-              <div key={cat.id} className="rounded-xl bg-white p-6 shadow-sm border border-gray-200">
+              <div key={cat.id} className="rounded-xl p-6 shadow-sm border border-gray-200" style={{ backgroundColor: branding.cardColor }}>
                 {/* Encabezado de categoría */}
                 <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
                   {editingCategoryId === cat.id ? (
@@ -333,7 +355,7 @@ export default function MenuPage() {
                       </button>
                     </div>
                   ) : (
-                    <h2 className="text-lg font-black">{cat.name}</h2>
+                    <h2 className="text-lg font-black" style={{ color: branding.primaryColor }}>{cat.name}</h2>
                   )}
 
                   {editingCategoryId !== cat.id && (
