@@ -428,6 +428,12 @@ export default function DashboardPage() {
             🍽️ Carta
           </Link>
           <Link
+            href="/dashboard/tables"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-black hover:bg-gray-100 transition-colors shadow-sm"
+          >
+            🪑 Mesas
+          </Link>
+          <Link
             href="/dashboard/settings"
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-black hover:bg-gray-100 transition-colors shadow-sm"
           >
