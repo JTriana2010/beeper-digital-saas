@@ -456,11 +456,11 @@ export default function DashboardPage() {
                 <label className="block text-xs font-bold mb-1" style={{ color: branding.primaryColor }}>
                   Agregar producto de la carta
                 </label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <select
                     value={selectedProductId}
                     onChange={(e) => setSelectedProductId(e.target.value)}
-                    className="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-black font-bold focus:border-blue-600 focus:outline-none"
+                    className="w-full sm:flex-1 min-w-0 rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-black font-bold focus:border-blue-600 focus:outline-none"
                   >
                     <option value="">Selecciona un producto...</option>
                     {products.map((p) => (
@@ -473,7 +473,7 @@ export default function DashboardPage() {
                     type="button"
                     onClick={handleAddToCart}
                     disabled={!selectedProductId}
-                    className="rounded-lg bg-gray-800 px-3 py-2 text-xs font-bold text-white hover:bg-gray-700 disabled:opacity-40"
+                    className="w-full sm:w-auto flex-shrink-0 whitespace-nowrap rounded-lg bg-gray-800 px-3 py-2 text-xs font-bold text-white hover:bg-gray-700 disabled:opacity-40"
                   >
                     + Agregar
                   </button>
