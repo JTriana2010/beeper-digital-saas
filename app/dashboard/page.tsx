@@ -331,6 +331,21 @@ export default function DashboardPage() {
     return '';
   };
 
+  // Decide si el texto debe ser negro o blanco según qué tan claro
+  // u oscuro sea el color de fondo elegido por el restaurante.
+  const getReadableTextColor = (bgHex: string): string => {
+    const hex = (bgHex || '#ffffff').replace('#', '');
+    if (hex.length !== 6) return '#111827';
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6 ? '#111827' : '#ffffff';
+  };
+
+  const cartTextColor = getReadableTextColor(branding.cardColor);
+  const cartMutedColor = cartTextColor === '#ffffff' ? '#d1d5db' : '#6b7280';
+
   const formatMoney = (amount: number = 0, curr: string = 'COP') => {
     const localeMap: Record<string, string> = {
       COP: 'es-CO',
@@ -479,7 +494,7 @@ export default function DashboardPage() {
                   </button>
                 </div>
                 {products.length === 0 && (
-                  <p className="text-[11px] text-gray-400 mt-1">
+                  <p className="text-[11px] mt-1" style={{ color: cartMutedColor }}>
                     Aún no tienes productos en tu carta. Puedes seguir usando el monto manual abajo, o crea tu carta desde el botón "🍽️ Carta".
                   </p>
                 )}
@@ -490,8 +505,8 @@ export default function DashboardPage() {
                   {cart.map((item) => (
                     <div key={item.product_id} className="flex items-center justify-between px-3 py-2 text-sm">
                       <div className="min-w-0">
-                        <p className="font-bold truncate">{item.name}</p>
-                        <p className="text-[11px] text-gray-500">
+                        <p className="font-bold truncate" style={{ color: cartTextColor }}>{item.name}</p>
+                        <p className="text-[11px]" style={{ color: cartMutedColor }}>
                           {formatMoney(item.unit_price, item.currency)} c/u
                         </p>
                       </div>
@@ -499,15 +514,15 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => handleChangeQuantity(item.product_id, -1)}
-                          className="h-6 w-6 rounded bg-gray-100 font-bold hover:bg-gray-200"
+                          className="h-6 w-6 rounded bg-gray-100 font-bold text-gray-800 hover:bg-gray-200"
                         >
                           −
                         </button>
-                        <span className="w-4 text-center font-bold">{item.quantity}</span>
+                        <span className="w-4 text-center font-bold" style={{ color: cartTextColor }}>{item.quantity}</span>
                         <button
                           type="button"
                           onClick={() => handleChangeQuantity(item.product_id, 1)}
-                          className="h-6 w-6 rounded bg-gray-100 font-bold hover:bg-gray-200"
+                          className="h-6 w-6 rounded bg-gray-100 font-bold text-gray-800 hover:bg-gray-200"
                         >
                           +
                         </button>
@@ -521,7 +536,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   ))}
-                  <div className="flex items-center justify-between px-3 py-2 text-sm font-black">
+                  <div className="flex items-center justify-between px-3 py-2 text-sm font-black" style={{ color: cartTextColor }}>
                     <span>Total</span>
                     <span>{formatMoney(cartTotal, cartCurrency)}</span>
                   </div>
