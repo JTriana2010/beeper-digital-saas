@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface Category {
   id: string;
@@ -36,6 +37,7 @@ export default function MenuPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showQr, setShowQr] = useState(false);
 
   const [newCategoryName, setNewCategoryName] = useState('');
   const [savingCategory, setSavingCategory] = useState(false);
@@ -298,6 +300,53 @@ export default function MenuPage() {
           <h1 className="text-2xl font-black" style={{ color: branding.primaryColor }}>🍽️ Carta / Menú</h1>
           <p className="text-xs" style={{ color: branding.secondaryColor }}>Administra categorías y productos de tu sede</p>
         </div>
+
+        {/* Carta pública / QR */}
+        {branchId && (
+          <div className="rounded-xl p-6 shadow-sm border border-gray-200" style={{ backgroundColor: branding.cardColor }}>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-base font-bold" style={{ color: branding.primaryColor }}>
+                  Tu carta pública
+                </h2>
+                <p className="text-xs" style={{ color: branding.secondaryColor }}>
+                  Este es el link (y QR) que verán tus clientes al escanear en la mesa
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <a
+                  href={`/menu/${branchId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-500"
+                >
+                  Ver Carta ↗
+                </a>
+                <button
+                  onClick={() => setShowQr(!showQr)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-bold hover:bg-gray-50"
+                  style={{ color: branding.primaryColor }}
+                >
+                  {showQr ? 'Ocultar QR' : 'Ver QR'}
+                </button>
+              </div>
+            </div>
+
+            {showQr && (
+              <div className="mt-4 flex flex-col items-center gap-2 border-t border-gray-100 pt-4">
+                <div className="bg-white p-3 rounded-lg">
+                  <QRCodeSVG
+                    value={typeof window !== 'undefined' ? `${window.location.origin}/menu/${branchId}` : ''}
+                    size={160}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500 text-center">
+                  Imprime este QR y colócalo en cada mesa
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Nueva categoría */}
         <div className="rounded-xl p-6 shadow-sm border border-gray-200" style={{ backgroundColor: branding.cardColor }}>
