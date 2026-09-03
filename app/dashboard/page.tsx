@@ -26,6 +26,22 @@ interface DailyClosure {
   created_at: string;
 }
 
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  is_available: boolean;
+}
+
+interface CartItem {
+  product_id: string;
+  name: string;
+  unit_price: number;
+  currency: string;
+  quantity: number;
+}
+
 export default function DashboardPage() {
   const [companyName, setCompanyName] = useState<string>('Mi Restaurante');
   const [branchName, setBranchName] = useState<string>('Sede Principal');
@@ -46,6 +62,10 @@ export default function DashboardPage() {
   const [orderNumber, setOrderNumber] = useState('');
   const [totalAmount, setTotalAmount] = useState('');
   const [currency, setCurrency] = useState('COP');
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [closingDay, setClosingDay] = useState(false);
@@ -101,6 +121,7 @@ export default function DashboardPage() {
 
         fetchOrders(profileData.branch_id);
         fetchClosures(profileData.branch_id);
+        fetchProducts(profileData.branch_id);
       }
       setFetching(false);
     }
@@ -129,12 +150,72 @@ export default function DashboardPage() {
     if (data) setClosures(data as DailyClosure[]);
   };
 
+  const fetchProducts = async (bId: string) => {
+    const { data } = await supabase
+      .from('products')
+      .select('id, name, price, currency, is_available')
+      .eq('branch_id', bId)
+      .eq('is_available', true)
+      .order('sort_order', { ascending: true });
+    if (data) setProducts(data as Product[]);
+  };
+
+  // ---------- Carrito del "Nuevo Pedido" ----------
+
+  const handleAddToCart = () => {
+    if (!selectedProductId) return;
+    const product = products.find((p) => p.id === selectedProductId);
+    if (!product) return;
+
+    setCart((prev) => {
+      const existing = prev.find((item) => item.product_id === product.id);
+      if (existing) {
+        return prev.map((item) =>
+          item.product_id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          product_id: product.id,
+          name: product.name,
+          unit_price: product.price,
+          currency: product.currency,
+          quantity: 1,
+        },
+      ];
+    });
+    setSelectedProductId('');
+  };
+
+  const handleChangeQuantity = (productId: string, delta: number) => {
+    setCart((prev) =>
+      prev
+        .map((item) =>
+          item.product_id === productId ? { ...item, quantity: item.quantity + delta } : item
+        )
+        .filter((item) => item.quantity > 0)
+    );
+  };
+
+  const handleRemoveFromCart = (productId: string) => {
+    setCart((prev) => prev.filter((item) => item.product_id !== productId));
+  };
+
+  const cartTotal = cart.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+  const cartCurrency = cart[0]?.currency || currency;
+
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orderNumber || !branchId || !companyId) return;
 
     setLoading(true);
-    const numericAmount = parseFloat(totalAmount) || 0;
+
+    // Si hay productos en el carrito, el total se calcula solo.
+    // Si no, se usa el monto escrito a mano (como funcionaba antes).
+    const usingCart = cart.length > 0;
+    const numericAmount = usingCart ? cartTotal : parseFloat(totalAmount) || 0;
+    const finalCurrency = usingCart ? cartCurrency : currency;
 
     const { data, error } = await supabase
       .from('orders')
@@ -145,15 +226,32 @@ export default function DashboardPage() {
           branch_id: branchId,
           status: 'PREPARING',
           total_amount: numericAmount,
-          currency: currency,
+          currency: finalCurrency,
         },
       ])
       .select()
       .single();
 
     if (!error && data) {
+      if (usingCart) {
+        const itemsToInsert = cart.map((item) => ({
+          order_id: data.id,
+          product_id: item.product_id,
+          product_name: item.name,
+          unit_price: item.unit_price,
+          quantity: item.quantity,
+          subtotal: item.unit_price * item.quantity,
+        }));
+
+        const { error: itemsError } = await supabase.from('order_items').insert(itemsToInsert);
+        if (itemsError) {
+          alert('El pedido se creó, pero hubo un error guardando el detalle de productos: ' + itemsError.message);
+        }
+      }
+
       setOrderNumber('');
       setTotalAmount('');
+      setCart([]);
       fetchOrders(branchId);
       setActiveQrToken(data.public_token);
     }
@@ -354,37 +452,115 @@ export default function DashboardPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-2">
-                  <label className="block text-xs font-bold mb-1" style={{ color: branding.primaryColor }}>
-                    Valor del Pedido
-                  </label>
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={totalAmount}
-                    onChange={(e) => setTotalAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black font-bold placeholder:text-gray-400 focus:border-blue-600 focus:outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold mb-1" style={{ color: branding.primaryColor }}>
-                    Moneda
-                  </label>
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: branding.primaryColor }}>
+                  Agregar producto de la carta
+                </label>
+                <div className="flex gap-2">
                   <select
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-black font-extrabold focus:border-blue-600 focus:outline-none"
+                    value={selectedProductId}
+                    onChange={(e) => setSelectedProductId(e.target.value)}
+                    className="flex-1 rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-black font-bold focus:border-blue-600 focus:outline-none"
                   >
-                    <option value="COP">COP</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
+                    <option value="">Selecciona un producto...</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} — {formatMoney(p.price, p.currency)}
+                      </option>
+                    ))}
                   </select>
+                  <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    disabled={!selectedProductId}
+                    className="rounded-lg bg-gray-800 px-3 py-2 text-xs font-bold text-white hover:bg-gray-700 disabled:opacity-40"
+                  >
+                    + Agregar
+                  </button>
                 </div>
+                {products.length === 0 && (
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Aún no tienes productos en tu carta. Puedes seguir usando el monto manual abajo, o crea tu carta desde el botón "🍽️ Carta".
+                  </p>
+                )}
               </div>
+
+              {cart.length > 0 && (
+                <div className="rounded-lg border border-gray-200 divide-y divide-gray-100">
+                  {cart.map((item) => (
+                    <div key={item.product_id} className="flex items-center justify-between px-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="font-bold truncate">{item.name}</p>
+                        <p className="text-[11px] text-gray-500">
+                          {formatMoney(item.unit_price, item.currency)} c/u
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleChangeQuantity(item.product_id, -1)}
+                          className="h-6 w-6 rounded bg-gray-100 font-bold hover:bg-gray-200"
+                        >
+                          −
+                        </button>
+                        <span className="w-4 text-center font-bold">{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleChangeQuantity(item.product_id, 1)}
+                          className="h-6 w-6 rounded bg-gray-100 font-bold hover:bg-gray-200"
+                        >
+                          +
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFromCart(item.product_id)}
+                          className="ml-1 text-[10px] font-bold text-red-600 hover:underline"
+                        >
+                          quitar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between px-3 py-2 text-sm font-black">
+                    <span>Total</span>
+                    <span>{formatMoney(cartTotal, cartCurrency)}</span>
+                  </div>
+                </div>
+              )}
+
+              {cart.length === 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-bold mb-1" style={{ color: branding.primaryColor }}>
+                      O escribe el valor manualmente
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={totalAmount}
+                      onChange={(e) => setTotalAmount(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-black font-bold placeholder:text-gray-400 focus:border-blue-600 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold mb-1" style={{ color: branding.primaryColor }}>
+                      Moneda
+                    </label>
+                    <select
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-2 py-2 text-sm text-black font-extrabold focus:border-blue-600 focus:outline-none"
+                    >
+                      <option value="COP">COP</option>
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                    </select>
+                  </div>
+                </div>
+              )}
 
               <button
                 type="submit"

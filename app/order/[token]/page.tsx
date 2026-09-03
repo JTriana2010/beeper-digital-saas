@@ -4,12 +4,20 @@ import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams } from 'next/navigation';
 
+interface OrderItem {
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+}
+
 interface OrderData {
   id: string;
   order_number: string;
   status: 'PENDING' | 'PREPARING' | 'READY' | 'DELIVERED' | 'CANCELLED';
   total_amount?: number;
   currency?: string;
+  items?: OrderItem[];
   branches: {
     name: string;
     logo_url: string;
@@ -238,6 +246,21 @@ export default function ClientOrderPage() {
             {order.total_amount !== undefined && order.total_amount !== null && (
               <div className="mt-2 inline-block rounded-full bg-gray-100 border border-gray-200 px-3 py-1 text-xs font-extrabold text-gray-800">
                 Total: {formatMoney(order.total_amount, order.currency || 'COP')}
+              </div>
+            )}
+
+            {order.items && order.items.length > 0 && (
+              <div className="mt-4 rounded-lg border border-gray-200 divide-y divide-gray-100 text-left">
+                {order.items.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <span className="font-bold text-gray-800">
+                      {item.quantity} × {item.product_name}
+                    </span>
+                    <span className="font-extrabold text-gray-700">
+                      {formatMoney(item.subtotal, order.currency || 'COP')}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
