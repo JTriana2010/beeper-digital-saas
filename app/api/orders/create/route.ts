@@ -11,13 +11,21 @@ import { randomUUID } from 'crypto';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { branchId, tableId, items } = body as {
+    const { branchId, tableId, customerName, items } = body as {
       branchId?: string;
       tableId?: string;
+      customerName?: string;
       items?: { productId: string; quantity: number }[];
     };
 
-    if (!branchId || !tableId || !Array.isArray(items) || items.length === 0) {
+    if (
+      !branchId ||
+      !tableId ||
+      !customerName ||
+      !customerName.trim() ||
+      !Array.isArray(items) ||
+      items.length === 0
+    ) {
       return NextResponse.json({ error: 'Faltan datos del pedido.' }, { status: 400 });
     }
 
@@ -115,6 +123,7 @@ export async function POST(req: NextRequest) {
         order_number: orderNumber,
         branch_id: branchId,
         table_id: tableId,
+        customer_name: customerName.trim(),
         status: 'PREPARING',
         total_amount: total,
         currency,

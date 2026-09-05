@@ -60,6 +60,8 @@ export default function PublicMenuPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState('');
   const [tableTouched, setTableTouched] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [nameTouched, setNameTouched] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -158,10 +160,16 @@ export default function PublicMenuPage() {
   const cartCurrency = cart[0]?.currency || 'COP';
 
   const handleGoToConfirm = () => {
+    let blocked = false;
     if (!selectedTableId) {
       setTableTouched(true);
-      return;
+      blocked = true;
     }
+    if (!customerName.trim()) {
+      setNameTouched(true);
+      blocked = true;
+    }
+    if (blocked) return;
     setConfirming(true);
   };
 
@@ -181,6 +189,7 @@ export default function PublicMenuPage() {
         body: JSON.stringify({
           branchId,
           tableId: selectedTableId,
+          customerName: customerName.trim(),
           items: cart.map((c) => ({ productId: c.product_id, quantity: c.quantity })),
         }),
       });
@@ -413,6 +422,29 @@ export default function PublicMenuPage() {
 
             <div className="mb-4">
               <label className="block text-xs font-bold mb-1" style={{ color: primaryColor }}>
+                👤 Tu nombre *
+              </label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => {
+                  setCustomerName(e.target.value);
+                  setNameTouched(false);
+                }}
+                placeholder="¿Cómo te llamas?"
+                className={`w-full rounded-lg border px-3 py-2 text-sm font-bold focus:outline-none ${
+                  nameTouched && !customerName.trim() ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
+              {nameTouched && !customerName.trim() && (
+                <p className="text-xs text-red-600 font-bold mt-1">
+                  ⚠️ Escribe tu nombre para que te encontremos al entregar.
+                </p>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-xs font-bold mb-1" style={{ color: primaryColor }}>
                 🪑 ¿En qué mesa estás? *
               </label>
               <select
@@ -467,7 +499,7 @@ export default function PublicMenuPage() {
               ¿Confirmas tu pedido?
             </h2>
             <p className="text-xs mb-4" style={{ color: secondaryColor }}>
-              {branch.name} · Mesa: <span className="font-bold">{selectedTable?.name}</span>
+              {branch.name} · Mesa: <span className="font-bold">{selectedTable?.name}</span> · A nombre de: <span className="font-bold">{customerName}</span>
             </p>
 
             <div className="space-y-2 mb-4">

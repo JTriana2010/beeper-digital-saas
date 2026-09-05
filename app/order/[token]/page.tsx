@@ -18,6 +18,8 @@ interface OrderData {
   total_amount?: number;
   currency?: string;
   items?: OrderItem[];
+  table_name?: string | null;
+  customer_name?: string | null;
   branches: {
     name: string;
     logo_url: string;
@@ -246,6 +248,21 @@ export default function ClientOrderPage() {
             {order.total_amount !== undefined && order.total_amount !== null && (
               <div className="mt-2 inline-block rounded-full bg-gray-100 border border-gray-200 px-3 py-1 text-xs font-extrabold text-gray-800">
                 Total: {formatMoney(order.total_amount, order.currency || 'COP')}
+              </div>
+            )}
+
+            {(order.table_name || order.customer_name) && (
+              <div className="mt-2 flex items-center justify-center gap-2 flex-wrap">
+                {order.table_name && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 border border-blue-200 px-3 py-1 text-xs font-bold text-blue-900">
+                    🪑 {order.table_name}
+                  </span>
+                )}
+                {order.customer_name && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 border border-purple-200 px-3 py-1 text-xs font-bold text-purple-900">
+                    👤 {order.customer_name}
+                  </span>
+                )}
               </div>
             )}
 

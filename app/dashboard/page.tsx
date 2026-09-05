@@ -16,6 +16,8 @@ interface Order {
   total_amount?: number;
   currency?: string;
   daily_closure_id?: string | null;
+  customer_name?: string | null;
+  tables?: { name: string } | null;
 }
 
 interface DailyClosure {
@@ -62,6 +64,9 @@ export default function DashboardPage() {
   const [orderNumber, setOrderNumber] = useState('');
   const [totalAmount, setTotalAmount] = useState('');
   const [currency, setCurrency] = useState('COP');
+
+  const [editingOrderNumberId, setEditingOrderNumberId] = useState<string | null>(null);
+  const [editingOrderNumberValue, setEditingOrderNumberValue] = useState('');
 
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -135,10 +140,37 @@ export default function DashboardPage() {
     setOrderNumber((prev) => (prev === '' ? String(orders.length + 1) : prev));
   }, [orders.length]);
 
+  // Escucha en tiempo real los pedidos nuevos (o actualizados) de esta
+  // sede -- así los pedidos que hacen los clientes desde la carta
+  // aparecen solos, sin tener que recargar la página.
+  useEffect(() => {
+    if (!branchId) return;
+
+    const channel = supabase
+      .channel(`orders-sede-${branchId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `branch_id=eq.${branchId}`,
+        },
+        () => {
+          fetchOrders(branchId);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [branchId]);
+
   const fetchOrders = async (bId: string) => {
     const { data } = await supabase
       .from('orders')
-      .select('*')
+      .select('*, tables(name)')
       .eq('branch_id', bId)
       .is('daily_closure_id', null)
       .order('created_at', { ascending: false });
@@ -272,6 +304,26 @@ export default function DashboardPage() {
 
     if (!error && branchId) {
       fetchOrders(branchId);
+    }
+  };
+
+  const startEditOrderNumber = (order: Order) => {
+    setEditingOrderNumberId(order.id);
+    setEditingOrderNumberValue(order.order_number);
+  };
+
+  const handleSaveOrderNumber = async (orderId: string) => {
+    if (!branchId || !editingOrderNumberValue.trim()) return;
+    const { error } = await supabase
+      .from('orders')
+      .update({ order_number: editingOrderNumberValue.trim() })
+      .eq('id', orderId);
+
+    if (!error) {
+      setEditingOrderNumberId(null);
+      fetchOrders(branchId);
+    } else {
+      alert('Error al renombrar: ' + error.message);
     }
   };
 
@@ -713,7 +765,37 @@ export default function DashboardPage() {
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-lg font-black text-black">Pedido #{o.order_number}</span>
+                        {editingOrderNumberId === o.id ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="text"
+                              value={editingOrderNumberValue}
+                              onChange={(e) => setEditingOrderNumberValue(e.target.value)}
+                              className="w-24 rounded border border-gray-300 px-2 py-1 text-sm font-black"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => handleSaveOrderNumber(o.id)}
+                              className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => setEditingOrderNumberId(null)}
+                              className="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className="text-lg font-black text-black cursor-pointer hover:underline decoration-dotted"
+                            title="Clic para renombrar"
+                            onClick={() => startEditOrderNumber(o)}
+                          >
+                            Pedido #{o.order_number} ✏️
+                          </span>
+                        )}
                         {o.total_amount !== undefined && o.total_amount !== null ? (
                           <span className="inline-flex items-center gap-1 text-xs font-bold text-gray-900 bg-gray-200 px-2 py-0.5 rounded">
                             {formatMoney(o.total_amount, o.currency || 'COP')}
@@ -723,6 +805,21 @@ export default function DashboardPage() {
                           </span>
                         ) : null}
                       </div>
+
+                      {(o.tables?.name || o.customer_name) && (
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
+                          {o.tables?.name && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded">
+                              🪑 {o.tables.name}
+                            </span>
+                          )}
+                          {o.customer_name && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-900 bg-purple-100 px-2 py-0.5 rounded">
+                              👤 {o.customer_name}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       <div className="mt-1 flex items-center gap-2">
                         <span
