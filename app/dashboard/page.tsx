@@ -129,6 +129,12 @@ export default function DashboardPage() {
     loadInitialData();
   }, []);
 
+  // Sugiere automáticamente el siguiente número de pedido del turno
+  // actual, sin pisar lo que el admin ya haya escrito a mano.
+  useEffect(() => {
+    setOrderNumber((prev) => (prev === '' ? String(orders.length + 1) : prev));
+  }, [orders.length]);
+
   const fetchOrders = async (bId: string) => {
     const { data } = await supabase
       .from('orders')
@@ -461,7 +467,7 @@ export default function DashboardPage() {
             <form onSubmit={handleCreateOrder} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold mb-1" style={{ color: branding.primaryColor }}>
-                  Número o Código de Pedido
+                  Número de Pedido (sugerido, puedes cambiarlo)
                 </label>
                 <input
                   type="text"

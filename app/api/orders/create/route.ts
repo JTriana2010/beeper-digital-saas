@@ -82,13 +82,28 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3) Generamos nosotros mismos el id y el token del pedido, porque
+    // 3) El número de pedido sigue el mismo contador del turno actual
+    //    que usa el dashboard (así el orden queda claro para la cocina).
+    const { data: nextNumberData, error: nextNumberError } = await supabase.rpc(
+      'next_order_number',
+      { p_branch_id: branchId }
+    );
+
+    if (nextNumberError) {
+      return NextResponse.json(
+        { error: 'No se pudo generar el número de pedido.' },
+        { status: 500 }
+      );
+    }
+
+    const orderNumber = nextNumberData as string;
+
+    // 4) Generamos nosotros mismos el id y el token del pedido, porque
     //    este cliente anónimo no tiene permiso para "leer de vuelta" el
     //    pedido recién creado (por seguridad, ver Paso 1). Al generarlos
     //    aquí, no necesitamos leerlos después.
     const orderId = randomUUID();
     const publicToken = randomUUID();
-    const orderNumber = `M${Date.now().toString().slice(-5)}`;
 
     // 4) Creamos el pedido. El company_id lo calcula automáticamente
     //    la base de datos a partir del branch_id (ver Paso 5), así que

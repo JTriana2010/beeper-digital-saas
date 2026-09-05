@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -63,6 +63,7 @@ export default function PublicMenuPage() {
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const alreadySentRef = useRef(false);
 
   const supabase = createClient();
 
@@ -165,6 +166,11 @@ export default function PublicMenuPage() {
   };
 
   const handleSendOrder = async () => {
+    // Bloqueo inmediato: si ya se está enviando (o ya se envió), no
+    // hacemos nada más, sin importar cuántas veces le hagan clic.
+    if (alreadySentRef.current) return;
+    alreadySentRef.current = true;
+
     setSubmitting(true);
     setSubmitError('');
 
@@ -184,6 +190,7 @@ export default function PublicMenuPage() {
       if (!res.ok) {
         setSubmitError(data.error || 'No se pudo enviar el pedido.');
         setSubmitting(false);
+        alreadySentRef.current = false; // si falló, sí puede intentar de nuevo
         return;
       }
 
@@ -191,6 +198,7 @@ export default function PublicMenuPage() {
     } catch {
       setSubmitError('Error de conexión. Intenta de nuevo.');
       setSubmitting(false);
+      alreadySentRef.current = false;
     }
   };
 
