@@ -118,6 +118,24 @@ export default function TablesPage() {
     else alert('Error al borrar: ' + error.message);
   };
 
+  const handleDeleteAllTables = async () => {
+    if (!branchId || tables.length === 0) return;
+
+    const confirmText = window.prompt(
+      `Vas a borrar las ${tables.length} mesas de esta sede. Los pedidos ya hechos NO se borran, solo dejan de tener una mesa asociada.\n\nPara confirmar, escribe exactamente: BORRAR TODO`
+    );
+    if (confirmText !== 'BORRAR TODO') return;
+
+    setSaving(true);
+    const { error } = await supabase.from('tables').delete().eq('branch_id', branchId);
+    if (!error) {
+      await fetchTables(branchId);
+    } else {
+      alert('Error al borrar las mesas: ' + error.message);
+    }
+    setSaving(false);
+  };
+
   const handleCreateMultiple = async () => {
     if (!branchId) return;
     const input = window.prompt(
@@ -194,9 +212,20 @@ export default function TablesPage() {
         </div>
 
         <div className="rounded-xl p-6 shadow-sm border border-gray-200" style={{ backgroundColor: branding.cardColor }}>
-          <h2 className="text-base font-bold mb-4" style={{ color: branding.primaryColor }}>
-            Tus Mesas ({tables.length})
-          </h2>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 className="text-base font-bold" style={{ color: branding.primaryColor }}>
+              Tus Mesas ({tables.length})
+            </h2>
+            {tables.length > 0 && (
+              <button
+                onClick={handleDeleteAllTables}
+                disabled={saving}
+                className="text-xs font-bold text-red-700 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 disabled:opacity-50"
+              >
+                🗑️ Borrar todas las mesas
+              </button>
+            )}
+          </div>
 
           {tables.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">
