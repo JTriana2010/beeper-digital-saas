@@ -125,6 +125,15 @@ export default function ClientOrderPage() {
   // Habilitar el audio del navegador mediante interacción explícita del usuario
   const handleEnableAudio = () => {
     setAudioEnabled(true);
+
+    // Aprovechamos este mismo toque del usuario para pedir permiso de
+    // notificaciones del sistema -- son un segundo canal de aviso que
+    // sí interrumpe aunque el celular esté reproduciendo música o video,
+    // a diferencia del sonido web normal.
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
     if (order?.status === 'READY') {
       playAudio();
     } else {
@@ -143,6 +152,8 @@ export default function ClientOrderPage() {
   };
 
   const playAudio = () => {
+    // Canal 1: sonido web (puede no escucharse si hay otro audio activo
+    // en el celular -- limitación del sistema operativo, no del código).
     if (audioRef.current) {
       audioRef.current.play().then(() => {
         setIsPlayingAudio(true);
@@ -150,6 +161,26 @@ export default function ClientOrderPage() {
       }).catch((err) => {
         console.log('Autoplay prevenido por el navegador:', err);
       });
+    }
+
+    // Canal 2: vibración -- funciona incluso si el sonido está silenciado
+    // o hay otro audio sonando por encima.
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([400, 200, 400, 200, 400, 200, 400]);
+    }
+
+    // Canal 3: notificación del sistema -- en Android normalmente suena
+    // y vibra por su propio canal, distinto al de la pestaña del navegador.
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      try {
+        new Notification('¡Tu pedido está listo! 🔔', {
+          body: 'Pasa a recogerlo cuando quieras.',
+          tag: 'pedido-listo',
+        });
+      } catch {
+        // Si el navegador no soporta notificaciones en este contexto,
+        // seguimos igual con audio + vibración.
+      }
     }
   };
 
