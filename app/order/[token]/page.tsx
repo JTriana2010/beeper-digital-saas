@@ -4,6 +4,13 @@ import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams } from 'next/navigation';
 
+const ALARM_SOUNDS = [
+  { id: 'campana', label: '🔔 Campana', url: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3' },
+  { id: 'timbre', label: '📯 Timbre', url: 'https://assets.mixkit.co/active_storage/sfx/2864/2864-preview.mp3' },
+  { id: 'alerta', label: '🚨 Alerta', url: 'https://assets.mixkit.co/active_storage/sfx/1518/1518-preview.mp3' },
+  { id: 'suave', label: '🎵 Suave', url: 'https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3' },
+];
+
 interface OrderItem {
   product_name: string;
   quantity: number;
@@ -41,13 +48,18 @@ export default function ClientOrderPage() {
   const [loading, setLoading] = useState(true);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const [selectedSoundId, setSelectedSoundId] = useState(ALARM_SOUNDS[0].id);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
-    // Tono de alerta en bucle
-    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    // Recuerda el sonido que el cliente eligió la última vez en este celular
+    const savedSoundId = typeof window !== 'undefined' ? localStorage.getItem('alarma_sonido_id') : null;
+    const initialSound = ALARM_SOUNDS.find((s) => s.id === savedSoundId) || ALARM_SOUNDS[0];
+    setSelectedSoundId(initialSound.id);
+
+    audioRef.current = new Audio(initialSound.url);
     audioRef.current.loop = true;
 
     async function fetchOrder() {
@@ -190,6 +202,29 @@ export default function ClientOrderPage() {
       audioRef.current.currentTime = 0;
     }
     setIsPlayingAudio(false);
+  };
+
+  const handleChangeSound = (soundId: string) => {
+    const sound = ALARM_SOUNDS.find((s) => s.id === soundId);
+    if (!sound) return;
+
+    setSelectedSoundId(soundId);
+    localStorage.setItem('alarma_sonido_id', soundId);
+
+    const wasPlaying = isPlayingAudio;
+    stopAudio();
+    audioRef.current = new Audio(sound.url);
+    audioRef.current.loop = true;
+
+    // Reproduce un adelanto cortico para que el cliente escuche cómo suena
+    audioRef.current.play().then(() => {
+      setTimeout(() => {
+        if (!wasPlaying) stopAudio();
+      }, 1200);
+    }).catch(() => {
+      // Si el navegador bloquea la reproducción aquí, no pasa nada grave:
+      // sonará normal cuando el pedido esté listo.
+    });
   };
 
   const formatMoney = (amount: number = 0, curr: string = 'COP') => {
@@ -344,6 +379,29 @@ export default function ClientOrderPage() {
               >
                 <span className="text-2xl">🔇</span> APAGAR ALARMA / SILENCIAR
               </button>
+            )}
+
+            {audioEnabled && !isPlayingAudio && (
+              <div className="mt-3">
+                <p className="text-[11px] font-bold text-gray-500 mb-1.5 text-center">
+                  Elige el sonido de tu alarma
+                </p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {ALARM_SOUNDS.map((sound) => (
+                    <button
+                      key={sound.id}
+                      onClick={() => handleChangeSound(sound.id)}
+                      className={`rounded-lg py-2 text-xs font-bold border ${
+                        selectedSoundId === sound.id
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {sound.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
