@@ -73,6 +73,7 @@ export default function DashboardPage() {
   const [selectedProductId, setSelectedProductId] = useState('');
 
   const [loading, setLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [closingDay, setClosingDay] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [activeQrToken, setActiveQrToken] = useState<string | null>(null);
@@ -139,6 +140,12 @@ export default function DashboardPage() {
   useEffect(() => {
     setOrderNumber((prev) => (prev === '' ? String(orders.length + 1) : prev));
   }, [orders.length]);
+
+  // Reloj en tiempo real del dashboard.
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Escucha en tiempo real los pedidos nuevos (o actualizados) de esta
   // sede -- así los pedidos que hacen los clientes desde la carta
@@ -474,6 +481,12 @@ export default function DashboardPage() {
             </h1>
             <p className="text-xs mt-0.5" style={{ color: branding.secondaryColor }}>
               Gestión de turnos y beepers digitales
+            </p>
+            <p className="text-xs font-black mt-1 tabular-nums" style={{ color: branding.primaryColor }}>
+              🕒 {currentTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              <span className="font-normal ml-1" style={{ color: branding.secondaryColor }}>
+                · {currentTime.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </span>
             </p>
           </div>
         </div>
