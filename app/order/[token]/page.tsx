@@ -4,11 +4,27 @@ import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams } from 'next/navigation';
 
+// Cada sonido es una lista de notas (frecuencia + duración) generadas
+// directamente por el navegador -- no dependen de ningún link externo
+// que se pueda caer o estar mal escrito.
 const ALARM_SOUNDS = [
-  { id: 'campana', label: '🔔 Campana', url: 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3' },
-  { id: 'timbre', label: '📯 Timbre', url: 'https://assets.mixkit.co/active_storage/sfx/2864/2864-preview.mp3' },
-  { id: 'alerta', label: '🚨 Alerta', url: 'https://assets.mixkit.co/active_storage/sfx/1518/1518-preview.mp3' },
-  { id: 'suave', label: '🎵 Suave', url: 'https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3' },
+  { id: 'campana', label: '🔔 Campana', wave: 'square' as OscillatorType, notes: [
+    { freq: 1046, duration: 0.15 },
+    { freq: 784, duration: 0.35 },
+  ] },
+  { id: 'timbre', label: '📯 Timbre', wave: 'square' as OscillatorType, notes: [
+    { freq: 880, duration: 0.12 },
+    { freq: 880, duration: 0.12 },
+  ] },
+  { id: 'alerta', label: '🚨 Alerta', wave: 'sawtooth' as OscillatorType, notes: [
+    { freq: 1200, duration: 0.15 },
+    { freq: 900, duration: 0.15 },
+    { freq: 1200, duration: 0.15 },
+    { freq: 900, duration: 0.15 },
+  ] },
+  { id: 'suave', label: '🎵 Suave', wave: 'sine' as OscillatorType, notes: [
+    { freq: 660, duration: 0.6 },
+  ] },
 ];
 
 interface OrderItem {
@@ -50,7 +66,8 @@ export default function ClientOrderPage() {
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [selectedSoundId, setSelectedSoundId] = useState(ALARM_SOUNDS[0].id);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const loopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -58,9 +75,6 @@ export default function ClientOrderPage() {
     const savedSoundId = typeof window !== 'undefined' ? localStorage.getItem('alarma_sonido_id') : null;
     const initialSound = ALARM_SOUNDS.find((s) => s.id === savedSoundId) || ALARM_SOUNDS[0];
     setSelectedSoundId(initialSound.id);
-
-    audioRef.current = new Audio(initialSound.url);
-    audioRef.current.loop = true;
 
     async function fetchOrder() {
       if (!token) return;
@@ -134,9 +148,59 @@ export default function ClientOrderPage() {
     };
   }, [token]);
 
+  // Crea (o reutiliza) el AudioContext del navegador. Debe crearse o
+  // reactivarse dentro de un toque del usuario, por las políticas de
+  // autoplay de los celulares.
+  const getAudioContext = (): AudioContext | null => {
+    if (typeof window === 'undefined') return null;
+    const AudioContextClass =
+      window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return null;
+
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContextClass();
+    }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+    return audioCtxRef.current;
+  };
+
+  // Reproduce UNA vez el patrón de notas del sonido elegido, generado
+  // directamente por el navegador (no depende de ningún archivo externo).
+  // Devuelve cuántos segundos dura, para saber cuándo repetirlo.
+  const playTonePattern = (soundId: string): number => {
+    const ctx = getAudioContext();
+    if (!ctx) return 0.5;
+
+    const sound = ALARM_SOUNDS.find((s) => s.id === soundId) || ALARM_SOUNDS[0];
+    let t = ctx.currentTime;
+
+    sound.notes.forEach((note) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = sound.wave;
+      osc.frequency.value = note.freq;
+
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + note.duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + note.duration + 0.02);
+
+      t += note.duration + 0.05;
+    });
+
+    return t - ctx.currentTime;
+  };
+
   // Habilitar el audio del navegador mediante interacción explícita del usuario
   const handleEnableAudio = () => {
     setAudioEnabled(true);
+    getAudioContext();
 
     // Aprovechamos este mismo toque del usuario para pedir permiso de
     // notificaciones del sistema -- son un segundo canal de aviso que
@@ -149,34 +213,26 @@ export default function ClientOrderPage() {
     if (order?.status === 'READY') {
       playAudio();
     } else {
-      // Reproduce un breve tono de prueba y lo pausa para desbloquear la reproducción automática
-      if (audioRef.current) {
-        audioRef.current.play().then(() => {
-          setTimeout(() => {
-            if (order?.status !== 'READY') {
-              audioRef.current?.pause();
-              audioRef.current!.currentTime = 0;
-            }
-          }, 300);
-        }).catch((err) => console.log('Error reproduciendo sonido:', err));
-      }
+      // Reproduce el sonido elegido una sola vez, para que el cliente
+      // escuche cómo suena y quede desbloqueada la reproducción.
+      playTonePattern(selectedSoundId);
     }
   };
 
   const playAudio = () => {
-    // Canal 1: sonido web (puede no escucharse si hay otro audio activo
-    // en el celular -- limitación del sistema operativo, no del código).
-    if (audioRef.current) {
-      audioRef.current.play().then(() => {
-        setIsPlayingAudio(true);
-        setAudioEnabled(true);
-      }).catch((err) => {
-        console.log('Autoplay prevenido por el navegador:', err);
-      });
-    }
+    setIsPlayingAudio(true);
+    setAudioEnabled(true);
+
+    // Canal 1: sonido generado por el navegador, en bucle.
+    const cycle = () => {
+      const duration = playTonePattern(selectedSoundId);
+      loopTimeoutRef.current = setTimeout(cycle, Math.max(duration, 0.3) * 1000 + 500);
+    };
+    cycle();
 
     // Canal 2: vibración -- funciona incluso si el sonido está silenciado
-    // o hay otro audio sonando por encima.
+    // o hay otro audio sonando por encima (cuando el navegador lo permite;
+    // algunos celulares la bloquean si la pestaña no está al frente).
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       navigator.vibrate([400, 200, 400, 200, 400, 200, 400]);
     }
@@ -197,34 +253,30 @@ export default function ClientOrderPage() {
   };
 
   const stopAudio = () => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+    if (loopTimeoutRef.current) {
+      clearTimeout(loopTimeoutRef.current);
+      loopTimeoutRef.current = null;
     }
     setIsPlayingAudio(false);
   };
 
   const handleChangeSound = (soundId: string) => {
-    const sound = ALARM_SOUNDS.find((s) => s.id === soundId);
-    if (!sound) return;
-
     setSelectedSoundId(soundId);
     localStorage.setItem('alarma_sonido_id', soundId);
 
-    const wasPlaying = isPlayingAudio;
-    stopAudio();
-    audioRef.current = new Audio(sound.url);
-    audioRef.current.loop = true;
-
-    // Reproduce un adelanto cortico para que el cliente escuche cómo suena
-    audioRef.current.play().then(() => {
-      setTimeout(() => {
-        if (!wasPlaying) stopAudio();
-      }, 1200);
-    }).catch(() => {
-      // Si el navegador bloquea la reproducción aquí, no pasa nada grave:
-      // sonará normal cuando el pedido esté listo.
-    });
+    if (isPlayingAudio) {
+      // Si está sonando, reinicia el bucle con el nuevo sonido.
+      stopAudio();
+      setIsPlayingAudio(true);
+      const cycle = () => {
+        const duration = playTonePattern(soundId);
+        loopTimeoutRef.current = setTimeout(cycle, Math.max(duration, 0.3) * 1000 + 500);
+      };
+      cycle();
+    } else {
+      // Si no está sonando, solo reproduce un adelanto para que lo escuches.
+      playTonePattern(soundId);
+    }
   };
 
   const formatMoney = (amount: number = 0, curr: string = 'COP') => {
