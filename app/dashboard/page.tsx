@@ -304,9 +304,15 @@ export default function DashboardPage() {
   };
 
   const handleUpdateStatus = async (orderId: string, newStatus: Order['status']) => {
+    const now = new Date().toISOString();
+    const updateData: Record<string, string> = { status: newStatus, updated_at: now };
+
+    if (newStatus === 'READY') updateData.ready_at = now;
+    if (newStatus === 'DELIVERED') updateData.delivered_at = now;
+
     const { error } = await supabase
       .from('orders')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .update(updateData)
       .eq('id', orderId);
 
     if (!error && branchId) {
@@ -492,6 +498,12 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/stats"
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-black hover:bg-gray-100 transition-colors shadow-sm"
+          >
+            📊 Estadísticas
+          </Link>
           <Link
             href="/dashboard/menu"
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-black hover:bg-gray-100 transition-colors shadow-sm"
