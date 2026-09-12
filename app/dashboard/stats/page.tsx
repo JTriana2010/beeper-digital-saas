@@ -280,21 +280,21 @@ export default function StatsPage() {
         {/* Gráfica simple de ingresos por día */}
         {dayEntries.length > 1 && (
           <div className="rounded-xl p-5 shadow-sm border border-gray-200" style={{ backgroundColor: branding.cardColor }}>
-            <h2 className="text-sm font-bold mb-4" style={{ color: branding.primaryColor }}>📈 Ingresos por día</h2>
-            <div className="flex items-end gap-3 h-40">
+            <h2 className="text-base font-bold mb-5" style={{ color: branding.primaryColor }}>📈 Ingresos por día</h2>
+            <div className="flex items-stretch gap-4 h-64">
               {dayEntries.map(([day, value]) => (
-                <div key={day} className="flex-1 flex flex-col items-center justify-end gap-1">
-                  <span className="text-[10px] font-bold" style={{ color: branding.secondaryColor }}>
+                <div key={day} className="flex-1 flex flex-col justify-end items-center gap-2 h-full">
+                  <span className="text-xs font-black whitespace-nowrap" style={{ color: branding.primaryColor }}>
                     {formatMoney(value, 'COP')}
                   </span>
                   <div
-                    className="w-full rounded-t-md"
+                    className="w-full rounded-t-lg min-h-[8px] shadow-sm"
                     style={{
-                      height: `${Math.max((value / maxDayRevenue) * 100, 4)}%`,
+                      height: `${Math.max((value / maxDayRevenue) * 100, 3)}%`,
                       backgroundColor: branding.primaryColor,
                     }}
                   />
-                  <span className="text-[10px] font-bold" style={{ color: branding.secondaryColor }}>{day}</span>
+                  <span className="text-xs font-bold whitespace-nowrap" style={{ color: branding.secondaryColor }}>{day}</span>
                 </div>
               ))}
             </div>

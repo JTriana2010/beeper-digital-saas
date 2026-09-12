@@ -18,6 +18,7 @@ interface Order {
   daily_closure_id?: string | null;
   customer_name?: string | null;
   tables?: { name: string } | null;
+  order_items?: { product_name: string; quantity: number; unit_price: number; subtotal: number }[];
 }
 
 interface DailyClosure {
@@ -177,7 +178,7 @@ export default function DashboardPage() {
   const fetchOrders = async (bId: string) => {
     const { data } = await supabase
       .from('orders')
-      .select('*, tables(name)')
+      .select('*, tables(name), order_items(product_name, quantity, unit_price, subtotal)')
       .eq('branch_id', bId)
       .is('daily_closure_id', null)
       .order('created_at', { ascending: false });
@@ -843,6 +844,16 @@ export default function DashboardPage() {
                               👤 {o.customer_name}
                             </span>
                           )}
+                        </div>
+                      )}
+
+                      {o.order_items && o.order_items.length > 0 && (
+                        <div className="mt-2 rounded-lg bg-white/70 border border-gray-200 px-3 py-2">
+                          {o.order_items.map((item, idx) => (
+                            <p key={idx} className="text-xs font-bold text-gray-800">
+                              {item.quantity}× {item.product_name}
+                            </p>
+                          ))}
                         </div>
                       )}
 
