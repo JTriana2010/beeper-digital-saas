@@ -50,6 +50,8 @@ export default function DashboardPage() {
   const [branchName, setBranchName] = useState<string>('Sede Principal');
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [branchId, setBranchId] = useState<string | null>(null);
+  const [companyPlan, setCompanyPlan] = useState<'free' | 'basic'>('free');
+  const [ordersThisMonth, setOrdersThisMonth] = useState<number>(0);
   
   const [branding, setBranding] = useState({
     logoUrl: '',
@@ -103,11 +105,24 @@ export default function DashboardPage() {
 
         const { data: companyData } = await supabase
           .from('companies')
-          .select('name')
+          .select('name, plan')
           .eq('id', profileData.company_id)
           .single();
 
         if (companyData?.name) setCompanyName(companyData.name);
+        if (companyData?.plan === 'basic') setCompanyPlan('basic');
+
+        // Conteo de pedidos del mes (solo importa si el plan es Free,
+        // pero lo traemos siempre para poder mostrarlo si hace falta).
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+        const { count: monthCount } = await supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('company_id', profileData.company_id)
+          .gte('created_at', startOfMonth.toISOString());
+        setOrdersThisMonth(monthCount || 0);
 
         const { data: branchData } = await supabase
           .from('branches')
@@ -299,7 +314,13 @@ export default function DashboardPage() {
       setTotalAmount('');
       setCart([]);
       fetchOrders(branchId);
+      setOrdersThisMonth((prev) => prev + 1);
       setActiveQrToken(data.public_token);
+    } else if (error) {
+      // El límite de 100 pedidos/mes del plan Free se hace cumplir en
+      // la base de datos (ver Paso "Planes"); si se alcanzó, mostramos
+      // el mensaje tal cual lo manda la base de datos.
+      alert(error.message.includes('Límite de 100 pedidos') ? error.message : 'Error al crear el pedido: ' + error.message);
     }
     setLoading(false);
   };
@@ -495,6 +516,25 @@ export default function DashboardPage() {
                 · {currentTime.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
               </span>
             </p>
+            <div className="mt-1.5 flex items-center gap-2">
+              <span
+                className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide ${
+                  companyPlan === 'basic' ? 'bg-purple-100 text-purple-800' : 'bg-gray-200 text-gray-700'
+                }`}
+              >
+                Plan {companyPlan === 'basic' ? 'Basic' : 'Free'}
+              </span>
+              {companyPlan === 'free' && (
+                <span
+                  className={`text-[10px] font-bold ${
+                    ordersThisMonth >= 90 ? 'text-red-600' : ''
+                  }`}
+                  style={ordersThisMonth < 90 ? { color: branding.secondaryColor } : undefined}
+                >
+                  {ordersThisMonth}/100 pedidos este mes
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

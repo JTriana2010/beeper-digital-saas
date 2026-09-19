@@ -27,6 +27,7 @@ type RangeOption = 'today' | '7d' | '30d';
 export default function StatsPage() {
   const [branchId, setBranchId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isFreePlan, setIsFreePlan] = useState(false);
   const [range, setRange] = useState<RangeOption>('today');
 
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -67,9 +68,23 @@ export default function StatsPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('branch_id')
+        .select('branch_id, company_id')
         .eq('id', user.id)
         .single();
+
+      if (profile?.company_id) {
+        const { data: companyData } = await supabase
+          .from('companies')
+          .select('plan')
+          .eq('id', profile.company_id)
+          .single();
+
+        if (companyData?.plan !== 'basic') {
+          setIsFreePlan(true);
+          setLoading(false);
+          return;
+        }
+      }
 
       if (profile?.branch_id) {
         setBranchId(profile.branch_id);
@@ -204,6 +219,28 @@ export default function StatsPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 text-black">
         <p className="text-sm font-semibold">Cargando estadísticas...</p>
+      </div>
+    );
+  }
+
+  if (isFreePlan) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+        <div className="max-w-sm text-center bg-white rounded-2xl p-8 shadow-sm border border-gray-200">
+          <p className="text-4xl mb-3">📊🔒</p>
+          <h1 className="text-lg font-black text-gray-900 mb-2">
+            Estadísticas es una función Basic
+          </h1>
+          <p className="text-sm text-gray-600 mb-5">
+            Actualiza tu plan para ver tiempos de preparación, productos más vendidos, ingresos por día y más.
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-500"
+          >
+            ← Volver al Panel
+          </Link>
+        </div>
       </div>
     );
   }

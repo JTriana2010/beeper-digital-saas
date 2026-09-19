@@ -131,8 +131,9 @@ export async function POST(req: NextRequest) {
     ]);
 
     if (orderError) {
+      const isLimitError = orderError.message.includes('Límite de 100 pedidos');
       return NextResponse.json(
-        { error: 'No se pudo crear el pedido: ' + orderError.message },
+        { error: isLimitError ? orderError.message : 'No se pudo crear el pedido: ' + orderError.message },
         { status: 400 }
       );
     }
