@@ -77,12 +77,22 @@ export default function MenuPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('branch_id')
+        .select('branch_id, company_id')
         .eq('id', user.id)
         .single();
 
       if (profile?.branch_id) {
         setBranchId(profile.branch_id);
+
+        let plan: 'free' | 'basic' = 'free';
+        if (profile.company_id) {
+          const { data: companyData } = await supabase
+            .from('companies')
+            .select('plan')
+            .eq('id', profile.company_id)
+            .single();
+          if (companyData?.plan === 'basic') plan = 'basic';
+        }
 
         const { data: branchData } = await supabase
           .from('branches')
@@ -91,12 +101,21 @@ export default function MenuPage() {
           .single();
 
         if (branchData) {
-          setBranding({
-            bgColor: branchData.dash_bg_color || '#f9fafb',
-            cardColor: branchData.dash_card_color || '#ffffff',
-            primaryColor: branchData.dash_primary_color || '#111827',
-            secondaryColor: branchData.dash_secondary_color || '#4b5563',
-          });
+          setBranding(
+            plan === 'basic'
+              ? {
+                  bgColor: branchData.dash_bg_color || '#f9fafb',
+                  cardColor: branchData.dash_card_color || '#ffffff',
+                  primaryColor: branchData.dash_primary_color || '#111827',
+                  secondaryColor: branchData.dash_secondary_color || '#4b5563',
+                }
+              : {
+                  bgColor: '#f9fafb',
+                  cardColor: '#ffffff',
+                  primaryColor: '#111827',
+                  secondaryColor: '#4b5563',
+                }
+          );
         }
 
         await fetchCategories(profile.branch_id);

@@ -110,7 +110,8 @@ export default function DashboardPage() {
           .single();
 
         if (companyData?.name) setCompanyName(companyData.name);
-        if (companyData?.plan === 'basic') setCompanyPlan('basic');
+        const plan: 'free' | 'basic' = companyData?.plan === 'basic' ? 'basic' : 'free';
+        setCompanyPlan(plan);
 
         // Conteo de pedidos del mes (solo importa si el plan es Free,
         // pero lo traemos siempre para poder mostrarlo si hace falta).
@@ -121,7 +122,8 @@ export default function DashboardPage() {
           .from('orders')
           .select('id', { count: 'exact', head: true })
           .eq('company_id', profileData.company_id)
-          .gte('created_at', startOfMonth.toISOString());
+          .gte('created_at', startOfMonth.toISOString())
+          .neq('status', 'CANCELLED');
         setOrdersThisMonth(monthCount || 0);
 
         const { data: branchData } = await supabase
@@ -132,13 +134,24 @@ export default function DashboardPage() {
 
         if (branchData) {
           if (branchData.name) setBranchName(branchData.name);
-          setBranding({
-            logoUrl: branchData.logo_url || '',
-            bgColor: branchData.dash_bg_color || '#f9fafb',
-            cardColor: branchData.dash_card_color || '#ffffff',
-            primaryColor: branchData.dash_primary_color || '#111827',
-            secondaryColor: branchData.dash_secondary_color || '#4b5563',
-          });
+          setBranding(
+            plan === 'basic'
+              ? {
+                  logoUrl: branchData.logo_url || '',
+                  bgColor: branchData.dash_bg_color || '#f9fafb',
+                  cardColor: branchData.dash_card_color || '#ffffff',
+                  primaryColor: branchData.dash_primary_color || '#111827',
+                  secondaryColor: branchData.dash_secondary_color || '#4b5563',
+                }
+              : {
+                  // Plan Free: el logo sí se respeta, los colores no.
+                  logoUrl: branchData.logo_url || '',
+                  bgColor: '#f9fafb',
+                  cardColor: '#ffffff',
+                  primaryColor: '#111827',
+                  secondaryColor: '#4b5563',
+                }
+          );
         }
 
         fetchOrders(profileData.branch_id);
@@ -339,6 +352,26 @@ export default function DashboardPage() {
 
     if (!error && branchId) {
       fetchOrders(branchId);
+    }
+  };
+
+  const handleCancelOrder = async (order: Order) => {
+    if (!window.confirm(`¿Seguro que quieres cancelar el Pedido #${order.order_number}? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: 'CANCELLED', updated_at: new Date().toISOString() })
+      .eq('id', order.id);
+
+    if (!error && branchId) {
+      // Un pedido cancelado no cuenta para el límite de 100/mes, así
+      // que también lo restamos del contador que se ve en pantalla.
+      setOrdersThisMonth((prev) => Math.max(0, prev - 1));
+      fetchOrders(branchId);
+    } else if (error) {
+      alert('Error al cancelar el pedido: ' + error.message);
     }
   };
 
@@ -933,6 +966,14 @@ export default function DashboardPage() {
                           Marcar Entregado
                         </button>
                       )}
+
+                      <button
+                        onClick={() => handleCancelOrder(o)}
+                        className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 shadow-sm"
+                        title="Cancelar pedido"
+                      >
+                        ✕ Cancelar
+                      </button>
                     </div>
                   </div>
                 ))}

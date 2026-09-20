@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [isFreePlan, setIsFreePlan] = useState(false);
 
   const supabase = createClient();
   const router = useRouter();
@@ -53,10 +54,11 @@ export default function SettingsPage() {
         if (profile.company_id) {
           const { data: company } = await supabase
             .from('companies')
-            .select('name')
+            .select('name, plan')
             .eq('id', profile.company_id)
             .single();
           if (company?.name) setCompanyName(company.name);
+          setIsFreePlan(company?.plan !== 'basic');
         }
 
         if (profile.branch_id) {
@@ -125,20 +127,31 @@ export default function SettingsPage() {
 
     const { error: branchError } = await supabase
       .from('branches')
-      .update({
-        name: branchName,
-        logo_url: logoUrl,
-        // Admin
-        dash_bg_color: dashBgColor,
-        dash_card_color: dashCardColor,
-        dash_primary_color: dashPrimaryColor,
-        dash_secondary_color: dashSecondaryColor,
-        // Client
-        bg_color: clientBgColor,
-        client_card_color: clientCardColor,
-        primary_color: clientPrimaryColor,
-        secondary_color: clientSecondaryColor,
-      })
+      .update(
+        isFreePlan
+          ? {
+              // En plan Free solo se puede cambiar nombre y logo --
+              // los colores se ignoran aunque los campos existan en
+              // el formulario (están bloqueados visualmente, pero
+              // este es el resguardo real).
+              name: branchName,
+              logo_url: logoUrl,
+            }
+          : {
+              name: branchName,
+              logo_url: logoUrl,
+              // Admin
+              dash_bg_color: dashBgColor,
+              dash_card_color: dashCardColor,
+              dash_primary_color: dashPrimaryColor,
+              dash_secondary_color: dashSecondaryColor,
+              // Client
+              bg_color: clientBgColor,
+              client_card_color: clientCardColor,
+              primary_color: clientPrimaryColor,
+              secondary_color: clientSecondaryColor,
+            }
+      )
       .eq('id', branchId);
 
     setSaving(false);
@@ -230,21 +243,29 @@ export default function SettingsPage() {
           </div>
 
           {/* Personalización Dashboard Administrador */}
-          <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-200 space-y-4">
+          <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-200 space-y-4 relative">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-2 gap-2">
               <h2 className="text-base font-bold text-black">
                 🎨 Personalización - Dashboard Admin (Restaurante)
+                {isFreePlan && (
+                  <span className="ml-2 text-[10px] font-black uppercase bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full align-middle">
+                    🔒 Basic
+                  </span>
+                )}
               </h2>
-              <button
-                type="button"
-                onClick={handleResetAdminDefaults}
-                className="text-xs font-bold text-gray-700 bg-gray-100 border border-gray-300 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                🔄 Restablecer Por Defecto (Admin)
-              </button>
+              {!isFreePlan && (
+                <button
+                  type="button"
+                  onClick={handleResetAdminDefaults}
+                  className="text-xs font-bold text-gray-700 bg-gray-100 border border-gray-300 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  🔄 Restablecer Por Defecto (Admin)
+                </button>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className={`relative ${isFreePlan ? 'opacity-50 pointer-events-none select-none' : ''}`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <label className="block text-xs font-bold text-black mb-2">Fondo General</label>
                 <div className="flex items-center gap-2">
@@ -315,6 +336,7 @@ export default function SettingsPage() {
                     className="w-full rounded border border-gray-300 px-2 py-1 text-xs text-black font-mono font-bold uppercase"
                   />
                 </div>
+              </div>
               </div>
             </div>
           </div>
@@ -324,14 +346,16 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={handleCopyAdminToClient}
-              className="w-full sm:w-auto text-xs font-bold text-blue-900 bg-white border border-blue-300 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors shadow-sm"
+              disabled={isFreePlan}
+              className="w-full sm:w-auto text-xs font-bold text-blue-900 bg-white border border-blue-300 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
             >
               ➡️ Copiar Colores de Admin a Cliente
             </button>
             <button
               type="button"
               onClick={handleCopyClientToAdmin}
-              className="w-full sm:w-auto text-xs font-bold text-blue-900 bg-white border border-blue-300 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors shadow-sm"
+              disabled={isFreePlan}
+              className="w-full sm:w-auto text-xs font-bold text-blue-900 bg-white border border-blue-300 hover:bg-blue-100 px-4 py-2 rounded-lg transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
             >
               ⬅️ Copiar Colores de Cliente a Admin
             </button>
@@ -341,9 +365,15 @@ export default function SettingsPage() {
           <div className="rounded-xl bg-white p-6 shadow-sm border border-gray-200 space-y-4">
             <h2 className="text-base font-bold text-black border-b border-gray-100 pb-2">
               📱 Personalización - Dashboard Cliente (Beeper Digital)
+              {isFreePlan && (
+                <span className="ml-2 text-[10px] font-black uppercase bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full align-middle">
+                  🔒 Basic
+                </span>
+              )}
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className={`relative ${isFreePlan ? 'opacity-50 pointer-events-none select-none' : ''}`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <label className="block text-xs font-bold text-black mb-2">Fondo General</label>
                 <div className="flex items-center gap-2">
@@ -415,8 +445,20 @@ export default function SettingsPage() {
                   />
                 </div>
               </div>
+              </div>
             </div>
           </div>
+
+          {isFreePlan && (
+            <div className="rounded-xl bg-purple-50 border border-purple-200 p-4 text-center">
+              <p className="text-sm font-bold text-purple-900">
+                🔒 La personalización de colores es una función del plan Basic.
+              </p>
+              <p className="text-xs text-purple-700 mt-1">
+                Tu restaurante se ve con los colores por defecto mientras estés en el plan Free. El nombre y el logo sí puedes cambiarlos libremente.
+              </p>
+            </div>
+          )}
 
           <button
             type="submit"

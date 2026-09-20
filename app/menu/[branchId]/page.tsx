@@ -11,6 +11,7 @@ interface BranchInfo {
   client_card_color: string;
   primary_color: string;
   secondary_color: string;
+  company_id?: string;
 }
 
 interface Category {
@@ -75,7 +76,7 @@ export default function PublicMenuPage() {
 
       const { data: branchData, error: branchError } = await supabase
         .from('branches')
-        .select('name, logo_url, bg_color, client_card_color, primary_color, secondary_color')
+        .select('name, logo_url, bg_color, client_card_color, primary_color, secondary_color, company_id')
         .eq('id', branchId)
         .single();
 
@@ -84,7 +85,28 @@ export default function PublicMenuPage() {
         setLoading(false);
         return;
       }
-      setBranch(branchData);
+
+      let plan: 'free' | 'basic' = 'free';
+      if (branchData.company_id) {
+        const { data: companyData } = await supabase
+          .from('companies')
+          .select('plan')
+          .eq('id', branchData.company_id)
+          .single();
+        if (companyData?.plan === 'basic') plan = 'basic';
+      }
+
+      setBranch(
+        plan === 'basic'
+          ? branchData
+          : {
+              ...branchData,
+              bg_color: '#f9fafb',
+              client_card_color: '#ffffff',
+              primary_color: '#111827',
+              secondary_color: '#4b5563',
+            }
+      );
 
       const { data: categoriesData } = await supabase
         .from('categories')

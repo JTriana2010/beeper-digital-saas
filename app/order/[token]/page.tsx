@@ -92,7 +92,7 @@ export default function ClientOrderPage() {
       }
 
       // 2) La sede sí es de lectura pública, la traemos aparte junto
-      //    con el nombre de la empresa dueña de esa sede.
+      //    con el nombre y el plan de la empresa dueña de esa sede.
       const { data: branchRow } = await supabase
         .from('branches')
         .select(`
@@ -103,15 +103,28 @@ export default function ClientOrderPage() {
           primary_color,
           secondary_color,
           companies (
-            name
+            name,
+            plan
           )
         `)
         .eq('id', orderRow.branch_id)
         .single();
 
+      const isBasic = (branchRow as unknown as { companies?: { plan?: string } })?.companies?.plan === 'basic';
+
       const combined = {
         ...orderRow,
-        branches: branchRow,
+        branches: isBasic
+          ? branchRow
+          : branchRow
+          ? {
+              ...branchRow,
+              bg_color: '#f9fafb',
+              client_card_color: '#ffffff',
+              primary_color: '#111827',
+              secondary_color: '#4b5563',
+            }
+          : branchRow,
       } as unknown as OrderData;
 
       setOrder(combined);
