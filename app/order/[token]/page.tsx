@@ -210,6 +210,51 @@ export default function ClientOrderPage() {
     return t - ctx.currentTime;
   };
 
+  // Convierte la llave pública VAPID (texto) al formato que pide la
+  // API de suscripción push del navegador.
+  const urlBase64ToUint8Array = (base64String: string) => {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+  };
+
+  // Suscribe este celular a notificaciones push reales (funcionan en
+  // Android aunque la pestaña esté en segundo plano). En iPhone, Safari
+  // no soporta esto salvo que la página esté "agregada a inicio", así
+  // que ahí simplemente no pasará nada -- el resto de canales (sonido,
+  // vibración) siguen intentándose igual.
+  const subscribeToPush = async (orderId: string) => {
+    try {
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidPublicKey) return;
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+
+      const json = subscription.toJSON();
+      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return;
+
+      await supabase.from('push_subscriptions').insert([
+        {
+          order_id: orderId,
+          endpoint: json.endpoint,
+          p256dh: json.keys.p256dh,
+          auth: json.keys.auth,
+        },
+      ]);
+    } catch (err) {
+      // Si el navegador no soporta push (ej. iPhone sin instalar a
+      // inicio), simplemente no pasa nada -- no es un error que deba
+      // interrumpir el resto de la pantalla.
+      console.log('No se pudo activar push real:', err);
+    }
+  };
+
   // Habilitar el audio del navegador mediante interacción explícita del usuario
   const handleEnableAudio = () => {
     setAudioEnabled(true);
@@ -220,7 +265,13 @@ export default function ClientOrderPage() {
     // sí interrumpe aunque el celular esté reproduciendo música o video,
     // a diferencia del sonido web normal.
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-      Notification.requestPermission();
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted' && order?.id) {
+          subscribeToPush(order.id);
+        }
+      });
+    } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && order?.id) {
+      subscribeToPush(order.id);
     }
 
     if (order?.status === 'READY') {
@@ -426,6 +477,12 @@ export default function ClientOrderPage() {
                   <p className="text-[11px] font-normal opacity-90">Necesario para sonar cuando tu pedido esté listo</p>
                 </div>
               </button>
+            )}
+
+            {audioEnabled && (
+              <p className="mt-3 text-center text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                ⚠️ Deja esta pantalla abierta y al frente (puedes bloquear el celular, pero no uses otra app como música o redes sociales) para que la alarma suene a tiempo.
+              </p>
             )}
 
             {audioEnabled && !isPlayingAudio && (

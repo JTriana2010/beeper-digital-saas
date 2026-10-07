@@ -352,6 +352,17 @@ export default function DashboardPage() {
 
     if (!error && branchId) {
       fetchOrders(branchId);
+
+      if (newStatus === 'READY') {
+        // Dispara el push real (Android). Si falla o nadie se suscribió,
+        // no pasa nada grave -- los demás canales (sonido, vibración)
+        // siguen funcionando igual mientras el cliente tenga la pantalla abierta.
+        fetch('/api/notifications/send-ready', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId }),
+        }).catch((err) => console.log('Error enviando push:', err));
+      }
     }
   };
 
